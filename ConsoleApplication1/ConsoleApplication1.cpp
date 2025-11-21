@@ -100,7 +100,7 @@ vector<string> playerShip = {
 };
 
 int shipWidth = 5;
-int shipHeight = 3;
+int shipHeight = 3; 
 
 enum Direction { STOP = 0, LEFT, RIGHT, UP, DOWN, QUIT };
 Direction dir;
