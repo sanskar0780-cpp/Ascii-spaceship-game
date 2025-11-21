@@ -623,7 +623,6 @@ void logic() {
             if (e.x < 0) {
                 e.x = -1;
             }
-        }
         enemies.erase(remove_if(enemies.begin(), enemies.end(), [](const Enemy& e) { return e.x < 0; }), enemies.end());
     }
 
