@@ -51,10 +51,14 @@ const int infoWidth = 60;
 int playerY = height / 2 - 1;
 int playerX = 5;
 
+// the board is here and defined by height and width + the colours
+
 vector<vector<char>> board(height, vector<char>(width, ' '));
 vector<vector<int>> boardColors(height, vector<int>(width, 7));
 
 HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+//setting the cursor position for changing the stuff in designated coordinates
 
 void SetCursorPosition(int x, int y) {
     COORD coord;
@@ -68,6 +72,8 @@ void setColour(int colour) {
 }
 
 int highScore = 0;
+
+//High score txt file ->
 
 int loadHighScore() {
     ifstream file("highscore.txt");
@@ -91,8 +97,9 @@ int shootCooldownMax = 4;
 int thrustAnimation = 0;
 const int THRUSTER_MAX_FRAMES = 3;
 int thrusterSpeedTimer = 0;
-const int THRUSTER_UPDATE_RATE = 5; // Change the animation frame every 5 frames
+const int THRUSTER_UPDATE_RATE = 5; // Frame changing every 5 seconds for the DAMN thruster!!!!!!!!
 
+// Very awesome player Ship
 vector<string> playerShip = {
     "*/^\\ ",
     "<===>",
@@ -107,7 +114,7 @@ Direction dir;
 
 enum EnemyType { STRAIGHT, SINE_WAVE, CHARGER };
 
-// --- Global Enemy Art Definitions ---
+// Global Enemies are here_--------------------------------
 vector<string> enemyShip_Scout = {
     "/-\\",
     "<O|",
@@ -141,7 +148,7 @@ struct Enemy {
 };
 
 
-//Stars here
+//Twinkle twinkle little stars here
 
 struct Stars {
     int x;
@@ -196,6 +203,8 @@ int bossShootRate = 60;
 int oldBossX = 0;
 int oldBossY = 0;
 
+//Boss spawning criteria
+
 Boss boss;
 bool bossActive = false;
 int bossSpawnScr = 100;
@@ -229,6 +238,9 @@ void printinPanel(const vector<string>& lines, int startX, int startY, int colou
     }
     setColour(7);
 }
+
+
+//player, enemies and objects building stuff
 
 void drawPlayer(int x, int y) {
     for (int i = 0; i < shipHeight; i++) {
@@ -465,6 +477,8 @@ void hideCursor() {
     SetConsoleCursorInfo(hConsole, &cursorInfo);
 }
 
+//This the real thing below, made me lose my mind for 2 hours straight T-T
+
 void drawThrusters(int playerX, int playerY, int prevX, int prevY) {
 
     int oldThrusterDrawX = prevX - 1;
@@ -573,6 +587,8 @@ void updatePlayerOnScreen() {
     setColour(7);
 }
 
+//Receiving input block here
+
 void input() {
     dir = STOP;
     if (_kbhit()) {
@@ -656,6 +672,8 @@ void input() {
         controllerConnected = false;
     }
 }
+
+//Logic goes here
 
 void logic() {
 
@@ -876,7 +894,7 @@ void logic() {
     // BOSS AI - Runs independently every frame!
     if (bossActive) {
 
-        //  SAVE OLD POSITION (Fixes erase bug)
+        //  SAVE OLD POSITION
         oldBossX = boss.x;
         oldBossY = boss.y;
 
@@ -923,7 +941,7 @@ int main() {
     drawPlayer(playerX, playerY);
 
 
-
+    //Pulling all the libraries for gettign input.
 
     ZeroMemory(&prevControllerState, sizeof(XINPUT_STATE));
     xinputDLL = LoadLibraryA("xinput1_4.dll");
@@ -934,6 +952,8 @@ int main() {
         myXInputGetState = (pXInputGetState_t)GetProcAddress(xinputDLL, "XInputGetState");
         myXInputSetState = (pXInputSetState_t)GetProcAddress(xinputDLL, "XInputSetState");
     }
+
+    //Real thing stars here, The GameLoop
     while (!gameOver) {
         input();
         logic();
@@ -1028,3 +1048,5 @@ int main() {
     if (xinputDLL) FreeLibrary(xinputDLL);
     return 0;
 }
+
+//End fr
