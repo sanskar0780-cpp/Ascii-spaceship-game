@@ -10,6 +10,7 @@
 #include <xinput.h>
 #include <mmsystem.h>
 #include <ctime>
+#include <cmath>
 
 using namespace std;
 
@@ -104,11 +105,63 @@ int shipHeight = 3;
 enum Direction { STOP = 0, LEFT, RIGHT, UP, DOWN, QUIT };
 Direction dir;
 
+enum EnemyType { STRAIGHT, SINE_WAVE, CHARGER };
+
+// --- Global Enemy Art Definitions ---
+vector<string> enemyShip_Scout = {
+    "/-\\",
+    "<O|",
+    "\\-/"
+};
+
+vector<string> enemyShip_Fighter = {
+    " <=>",
+    "-(X)-",
+    " <=>"
+};
+
+vector<string> enemyShip_Bomber = {
+    "o-o",
+    "|=|",
+    "o-o"
+};
+
 struct Enemy {
     int x, y;
     Direction dir;
-    char symbol = 'O';
+    vector<string> enemyShip;
+
+    int height;
+    int width;
+    int colour;
+    EnemyType type;
+
+    int originalY;
+    int sineTimer;
 };
+
+
+//Stars here
+
+struct Stars {
+    int x;
+    int y;
+    int colour;
+};
+
+vector<Stars> stars;
+vector<Stars> oldstars;
+
+void initialStars() {
+    for (int i = 0; i < 20; i++) {
+        stars.push_back({
+            rand() % width,
+            rand() % height,
+            8
+            });
+    }
+}
+
 
 //BOSS DETAILS HERE
 
@@ -158,7 +211,7 @@ vector<Enemy> oldEnemyPositions;
 vector<Enemy> enemies;
 
 int enemySpawnTimer = 0;
-const int enemySpawnRate = 50;
+const int enemySpawnRate = 80;
 const int enemySpeed = 10;
 
 struct Bullet {
@@ -204,22 +257,25 @@ void erasePlayer(int x, int y) {
     }
 }
 
-void drawEnemy(int ex, int ey) {
-    if (ex < 0 || ex >= width || ey < 0 || ey >= height) return;
-    SetCursorPosition(ex + 1, ey + 1);
-    setColour(12);
-    cout << 'O';
+void drawEnemy(const Enemy& enemy) {
+
+    setColour(enemy.colour);
+    for (int i = 0; i < enemy.height; i++) {
+        SetCursorPosition(enemy.x + 1, enemy.y + 1 + i);
+        cout << enemy.enemyShip[i];
+    }
     setColour(7);
 }
 
-void eraseEnemy(int ex, int ey) {
-    if (ex < 0 || ex >= width || ey < 0 || ey >= height) return;
-    SetCursorPosition(ex + 1, ey + 1);
-    char ch = board[ey][ex];
-    int col = boardColors[ey][ex];
-    setColour(col);
-    cout << ch;
-    setColour(7);
+void eraseEnemy(const Enemy& enemy) {
+    string blank(enemy.width, ' ');
+
+    for (int i = 0; i < enemy.height; i++) {
+        
+        SetCursorPosition(enemy.x + 1, enemy.y + 1 + i);
+        
+        cout << blank;
+    }
 }
 
 void drawBullet(int bx, int by) {
@@ -293,6 +349,22 @@ void eraseBoss(int bx, int by) {
 
 vector<string> healthDisplay;
 
+void drawStars(int x, int y, int color) {
+    if (x >= 0 && x < width && y >= 0 && y < height) {
+        SetCursorPosition(x + 1, y + 1);
+            setColour(color);
+            cout << ".";
+            setColour(7);
+    }
+
+}
+
+void eraseStars(int x, int y) {
+    if (x >= 0 && x < width && y >= 0 && y < height) {
+        SetCursorPosition(x + 1, y + 1);
+        cout << " ";
+    }
+}
 
 void clearInfoPanel() {
     for (int y = 0; y < height; y++) {
@@ -317,7 +389,7 @@ void displayBossHealth() {
     for (int i = 0; i < barLength; i++) {
         if (i < filled) {
             setColour(38);
-            cout << "=";
+            cout << " ";
         }
         else {
             setColour(7);
@@ -438,8 +510,6 @@ void drawThrusters(int playerX, int playerY, int prevX, int prevY) {
     }
     setColour(7);
 }
-
-
 
 bool gameOver = false;
 
@@ -601,11 +671,67 @@ void logic() {
         thrusterSpeedTimer = 0; // Reset the timer
     }
 
+    //Stars spawner
+    static int frameCounter = 0;
+    frameCounter++;
+
+    oldstars = stars;
+    if (frameCounter % 15 == 0) {
+        for (auto& s : stars) {
+            s.x--;
+
+            if (s.x <= 1) {
+                s.x = width - 1;
+                s.y = rand() % height;
+            }
+        }
+    }
+
+    if (frameCounter > 1000) {
+        frameCounter = 0;
+    }
+
+    //Enemy spawner 
     enemySpawnTimer++;
     if (enemySpawnTimer >= enemySpawnRate) {
         enemySpawnTimer = 0;
-        int spawnY = rand() % (height - 2) + 1;
-        enemies.push_back({ width - 2, spawnY, LEFT, 'O' });
+        int spawnY = rand() % (height - 3);
+        Enemy newEnemy;
+
+        newEnemy.dir = LEFT;
+
+        int type = rand() % 3;
+
+        if (type == 0) {
+            newEnemy.type = STRAIGHT;
+            newEnemy.enemyShip = enemyShip_Bomber;
+            newEnemy.width = 3;
+            newEnemy.height = 3;
+            newEnemy.colour = 12;
+        }
+        else if (type == 1) {
+            newEnemy.type = SINE_WAVE;
+            newEnemy.enemyShip = enemyShip_Scout;
+            newEnemy.width = 5;
+            newEnemy.height = 3;
+            newEnemy.colour = 13;
+        }
+        else {
+            newEnemy.type = CHARGER;
+            newEnemy.enemyShip = enemyShip_Fighter;
+            newEnemy.width = 6;
+            newEnemy.height = 3;
+            newEnemy.colour = 14;
+        }
+
+        newEnemy.x = width - newEnemy.width - 1;
+        newEnemy.y = rand() % height - newEnemy.height;
+        if (newEnemy.type == SINE_WAVE) {
+            newEnemy.originalY = newEnemy.y; // Store its starting height
+            newEnemy.sineTimer = 0;
+        }
+
+        enemies.push_back(newEnemy);
     }
 
     static int enemyMoveTimer = 0;
@@ -614,24 +740,34 @@ void logic() {
         enemyMoveTimer = 0;
         oldEnemyPositions = enemies;
         for (auto& e : enemies) {
-            e.x--;
-            if (e.x <= playerX + shipWidth && e.y >= playerY && e.y < playerY + shipHeight) {
-                gameOver = true;
-                eraseEnemy(e.x, e.y);
-                e.x = -1;
+            switch (e.type) {
+            case STRAIGHT :
+                e.x--;
+                break;
+            case SINE_WAVE:
+                e.x--;
+                e.sineTimer++;
+
+                e.y = e.originalY + static_cast<int>(cos(e.sineTimer * 0.2) * 6);
+                break;
+
+            case CHARGER:
+                e.x -= 3;
+                break;
             }
-            if (e.x < 0) {
-                e.x = -1;
-            }
+
+            if (e.y < 0) e.y = 0;
+            if (e.y + e.height >= height) e.y = height - e.height;
+        }
         enemies.erase(remove_if(enemies.begin(), enemies.end(), [](const Enemy& e) { return e.x < 0; }), enemies.end());
     }
 
     //boss active condition : 
     if (!bossActive && score >= bossSpawnScr) {
         bossActive = true;
-        bossSpawnScr += 400;
-        if (bossShootRate >= 15) {
-            bossShootRate -= 5;
+        bossSpawnScr += 500;
+        if (bossShootRate >= 20) {
+            bossShootRate -= 10;
         }
         if (bossMoveSpeed >= 5) {
             bossMoveSpeed -= 5;
@@ -652,7 +788,7 @@ void logic() {
     oldBBPosition = bossBullets;
     for (auto& bb : bossBullets) {
         bb.x--;
-        if (bb.x < 0) {
+        if (bb.x < 1) {
             bb.x = -1;
         }
     }
@@ -662,8 +798,13 @@ void logic() {
     for (auto it = bullets.begin(); it != bullets.end(); ) {
         bool hit = false;
         for (auto eit = enemies.begin(); eit != enemies.end(); ) {
-            if (it->x == eit->x && it->y == eit->y) {
-                eraseEnemy(eit->x, eit->y);
+
+            bool hitX = (it->x >= eit->x) && (it->x < eit->x + eit->width);
+            bool hitY = (it->y >= eit->y) && (it->y < eit->y + eit->height);
+
+            if (hitX && hitY) {
+                eraseEnemy(*eit);
+
                 eit = enemies.erase(eit);
                 hit = true;
                 score += 50;
@@ -674,6 +815,7 @@ void logic() {
             }
         }
 
+        //Boss bullets - player bullet collision
         for (auto bbit = bossBullets.begin(); bbit != bossBullets.end(); ) {
 
             if (it->x == bbit->x && it->y == bbit->y) {
@@ -734,11 +876,11 @@ void logic() {
     // BOSS AI - Runs independently every frame!
     if (bossActive) {
 
-        // 1. SAVE OLD POSITION (Fixes erase bug)
+        //  SAVE OLD POSITION (Fixes erase bug)
         oldBossX = boss.x;
         oldBossY = boss.y;
 
-        // 2. BOSS SHOOT
+        //  BOSS SHOOT
         bossShootTimer++;
         if (bossShootTimer >= bossShootRate) {
             bossShootTimer = 0;
@@ -749,7 +891,7 @@ void logic() {
             }
         }
 
-        // 3. BOSS MOVEMENT
+        //  BOSS MOVEMENT
         bossMoveTimer++;
         if (bossMoveTimer >= bossMoveSpeed) {
             bossMoveTimer = 0;
@@ -770,12 +912,17 @@ int main() {
     _getch();
     system("cls");
 
-    
+    PlaySound(L"Starting_page.wav", NULL, SND_ASYNC | SND_LOOP);
     highScore = loadHighScore();
+
     drawInitialBoard();
     drawBoardContents();
+
+    initialStars();
     SetCursorPosition(playerX + 1, playerY + 1);
     drawPlayer(playerX, playerY);
+
+
 
 
     ZeroMemory(&prevControllerState, sizeof(XINPUT_STATE));
@@ -790,14 +937,19 @@ int main() {
     while (!gameOver) {
         input();
         logic();
+
+        for (const auto& s : oldstars)eraseStars(s.x, s.y);
+        for (const auto& s : stars) drawStars(s.x, s.y, s.colour);
+
+
         drawThrusters(playerX, playerY, prevPlayerX, prevPlayerY);
         updatePlayerOnScreen();
         if (!enemies.empty()) {
             for (const auto& oe : oldEnemyPositions) {
-                eraseEnemy(oe.x, oe.y);
+                eraseEnemy(oe);
             }
             for (const auto& e : enemies) {
-                drawEnemy(e.x, e.y);
+                drawEnemy(e);
             }
         }
         if (bossActive) {
@@ -866,7 +1018,7 @@ int main() {
         saveHighScore(score);
     }
     else {
-        SetCursorPosition(width / 2 - 10, height / 2 + 1);
+        SetCursorPosition(width / 2 - 15, height / 2 + 1);
         setColour(10); // Green
         cout << "Your Score: " << score << " | High Score: " << highScore;
     }
